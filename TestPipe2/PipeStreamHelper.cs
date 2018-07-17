@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
@@ -64,13 +65,28 @@ namespace TestPipe2
             return buffer;
         }
 
-        public static void WaitForDebug()
+        public static void WaitForDebug(string fileName = null)
         {
-            while (File.Exists(@"c:\tmp\debug.txt"))
+            if (string.IsNullOrEmpty(fileName))
             {
-                Console.WriteLine("Wating for debugger...");
-                Thread.Sleep(1000);
+                Console.WriteLine($"Waiting for attachement on process id={Process.GetCurrentProcess().Id}");
+                while (!Debugger.IsAttached)
+                {
+                    Console.WriteLine("Waiting for debugger...");
+                    Thread.Sleep(1000);
+                }
             }
+            else
+            {
+                Console.WriteLine($"Waiting removal of file {fileName}");
+                while (File.Exists(fileName))
+                {
+                    Console.WriteLine($"Waiting for removal...");
+                    Thread.Sleep(1000);
+                }
+            }
+            Console.WriteLine("Debugger found!");
+            Debugger.Break();
         }
     }
 }
