@@ -66,7 +66,9 @@ namespace TestPipe2
 
             clt.Connect();
 
-            var inBuff = new byte[10*1024*1024+1755662];
+            var sw = new Stopwatch();
+            
+            var inBuff = new byte[20*1024*1024+1755662];
             int checkSum = 0;
             for (int i = 0; i < inBuff.Length; i++)
             {
@@ -74,11 +76,13 @@ namespace TestPipe2
                 checkSum += inBuff[i];
             }
             Console.WriteLine($"CheckSum={checkSum}");
+            sw.Restart();
             PipeStreamHelper.WriteData(clt, inBuff);
 
 
             var data=PipeStreamHelper.ReadData(clt);
-
+            sw.Stop();
+            Console.WriteLine($"ms={sw.ElapsedMilliseconds} {(1000.0*(double)inBuff.Length/sw.ElapsedMilliseconds)/(1024*1024)} Mo/s");
 
             // Task.WaitAll(read, write);
             var cltMsg = Encoding.UTF8.GetString(data, 0, data.Length);
