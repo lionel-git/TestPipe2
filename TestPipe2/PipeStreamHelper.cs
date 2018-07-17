@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -65,7 +66,7 @@ namespace TestPipe2
             return buffer;
         }
 
-        public static void WaitForDebug(string fileName = null)
+        public static void WaitForDebug(string fileName=null, bool emitBreak=true)
         {
             if (string.IsNullOrEmpty(fileName))
             {
@@ -86,7 +87,23 @@ namespace TestPipe2
                 }
             }
             Console.WriteLine("Debugger found!");
-            Debugger.Break();
+            if (emitBreak)
+                Debugger.Break();
+            
+        }
+
+        public static string GetHash(byte[] data)
+        {
+            var sb = new StringBuilder();
+            using (MD5 md5Hash = MD5.Create())
+            {
+                byte[] hash = md5Hash.ComputeHash(data);
+                for (int i=0;i<hash.Length;i++)
+                {
+                    sb.AppendFormat("{0:X}", hash[i]);
+                }
+            }
+            return sb.ToString();
         }
     }
 }

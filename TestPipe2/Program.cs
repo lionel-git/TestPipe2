@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,14 +38,12 @@ namespace TestPipe2
                     svr.WaitForConnection();
 
                     var data=PipeStreamHelper.ReadData(svr);
-                    int checkSum = 0;
-                    for (int i=0;i<data.Length;i++)
-                        checkSum+=data[i];
-                    Console.WriteLine($"CheckSum = {checkSum}");
 
-                    var response = Encoding.UTF8.GetBytes("We're done now");
+                    var response = Encoding.UTF8.GetBytes("OK from server");
                     PipeStreamHelper.WriteData(svr, response);
-                    Console.WriteLine("It's all over");
+
+                    Console.WriteLine($"Hash on server = {PipeStreamHelper.GetHash(data)}");
+
                     while (!exeProcess.WaitForExit(1000)) ;
                     Console.WriteLine($"retCode={exeProcess.ExitCode}");
                 }
@@ -60,26 +59,23 @@ namespace TestPipe2
 
         static int DoWork()
         {
-            PipeStreamHelper.WaitForDebug();
+            //PipeStreamHelper.WaitForDebug();
+            //Debugger.Launch();
 
             var clt = new NamedPipeClientStream("localhost", $"PipesOfPiece_{ Process.GetCurrentProcess().Id}", PipeDirection.InOut, PipeOptions.None);
 
             clt.Connect();
 
             var sw = new Stopwatch();
-            
+
+
             var inBuff = new byte[20*1024*1024+1755662];
-            int checkSum = 0;
             for (int i = 0; i < inBuff.Length; i++)
-            {
                 inBuff[i] = (byte)(2 * i + 1);
-                checkSum += inBuff[i];
-            }
-            Console.WriteLine($"CheckSum={checkSum}");
+            Console.WriteLine($"hash on client = {PipeStreamHelper.GetHash(inBuff)}");
+   
             sw.Restart();
             PipeStreamHelper.WriteData(clt, inBuff);
-
-
             var data=PipeStreamHelper.ReadData(clt);
             sw.Stop();
             Console.WriteLine($"ms={sw.ElapsedMilliseconds} {(1000.0*(double)inBuff.Length/sw.ElapsedMilliseconds)/(1024*1024)} Mo/s");
