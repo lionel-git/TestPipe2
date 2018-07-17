@@ -31,21 +31,18 @@ namespace TestPipe2
                 Console.WriteLine("Process");
                 using (Process exeProcess = Process.Start(startInfo))
                 {
-                    //Client
-                    var client = new NamedPipeClientStream($"PipesOfPiece_{exeProcess.Id}");
-                    client.Connect(2000);
+                    var svr = new NamedPipeServerStream($"PipesOfPiece_{exeProcess.Id}", PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte);
+                    svr.WaitForConnection();
+                    var srvBuff = new byte[256];
+                    var srvL = svr.Read(srvBuff, 0, srvBuff.Length);
+                    var svrMsg = Encoding.UTF8.GetString(srvBuff, 0, srvL);
+                    Console.WriteLine("Server got message: {0}", svrMsg);
+                    var response = Encoding.UTF8.GetBytes("We're done now");
+                    svr.Write(response, 0, response.Length);
 
-                    StreamReader reader = new StreamReader(client);
-                    Console.WriteLine("Connected");
-
-                    while (!exeProcess.WaitForExit(1000))
-                    {
-                        Console.WriteLine(exeProcess.Id);
-                        Console.WriteLine("Start readline");
-                        var line = reader.ReadToEnd();
-                        Console.WriteLine($"Read line={line}");
-                    }
-                    Console.WriteLine($"Process finished {exeProcess.Id} : {exeProcess.ExitCode}");
+                    Console.WriteLine("It's all over");
+                    while (!exeProcess.WaitForExit(1000)) ;
+                    Console.WriteLine($"ret={exeProcess.ExitCode}");
                 }
             }
             catch (Exception e)
@@ -56,29 +53,16 @@ namespace TestPipe2
 
         static int DoWork()
         {
-            var server = new NamedPipeServerStream($"PipesOfPiece_{ Process.GetCurrentProcess().Id}");
-            server.WaitForConnection();
-            StreamWriter writer = new StreamWriter(server);
+            var clt = new NamedPipeClientStream("localhost", $"PipesOfPiece_{ Process.GetCurrentProcess().Id}", PipeDirection.InOut, PipeOptions.Asynchronous);
 
-            try
-            {
-                Console.WriteLine("Start Runner");
-
-                Thread.Sleep(10000);
-                Console.WriteLine("Calc finished");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                writer.WriteLine(e.Message);
-                writer.WriteLine("Suite1");
-                writer.WriteLine("Suite2");
-                writer.Flush();
-                return -1;
-            }
-
-            writer.WriteLine("OK");
-            writer.Flush();
+            clt.Connect();
+            var inBuff = new byte[256];
+            var read = clt.ReadAsync(inBuff, 0, inBuff.Length);
+            var msg = Encoding.UTF8.GetBytes("Hello!");
+            var write = clt.WriteAsync(msg, 0, msg.Length);
+            Task.WaitAll(read, write);
+            var cltMsg = Encoding.UTF8.GetString(inBuff, 0, read.Result);
+            Console.WriteLine("Client got message: {0}", cltMsg);
             return 7;
         }
     
