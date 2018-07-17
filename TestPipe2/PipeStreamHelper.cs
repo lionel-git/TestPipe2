@@ -100,7 +100,7 @@ namespace TestPipe2
                 byte[] hash = md5Hash.ComputeHash(data);
                 for (int i=0;i<hash.Length;i++)
                 {
-                    sb.AppendFormat("{0:X}", hash[i]);
+                    sb.AppendFormat(":{0:X2}", hash[i]);
                 }
             }
             return sb.ToString();

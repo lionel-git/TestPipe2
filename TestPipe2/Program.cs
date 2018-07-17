@@ -69,7 +69,7 @@ namespace TestPipe2
             var sw = new Stopwatch();
 
 
-            var inBuff = new byte[20*1024*1024+1755662];
+            var inBuff = new byte[20*1024*1024+175566];
             for (int i = 0; i < inBuff.Length; i++)
                 inBuff[i] = (byte)(2 * i + 1);
             Console.WriteLine($"hash on client = {PipeStreamHelper.GetHash(inBuff)}");
