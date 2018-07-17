@@ -33,13 +33,15 @@ namespace TestPipe2
                 {
                     var svr = new NamedPipeServerStream($"PipesOfPiece_{exeProcess.Id}", PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte);
                     svr.WaitForConnection();
-                    var srvBuff = new byte[256];
-                    var srvL = svr.Read(srvBuff, 0, srvBuff.Length);
-                    var svrMsg = Encoding.UTF8.GetString(srvBuff, 0, srvL);
-                    Console.WriteLine("Server got message: {0}", svrMsg);
-                    var response = Encoding.UTF8.GetBytes("We're done now");
-                    svr.Write(response, 0, response.Length);
 
+                    var data=PipeStreamHelper.ReadData(svr);
+                    int checkSum = 0;
+                    for (int i=0;i<data.Length;i++)
+                        checkSum+=data[i];
+                    Console.WriteLine($"CheckSum = {checkSum}");
+
+                    var response = Encoding.UTF8.GetBytes("We're done now");
+                    PipeStreamHelper.WriteData(svr, response);
                     Console.WriteLine("It's all over");
                     while (!exeProcess.WaitForExit(1000)) ;
                     Console.WriteLine($"ret={exeProcess.ExitCode}");
@@ -51,17 +53,33 @@ namespace TestPipe2
             }
         }
 
+       
+
+
         static int DoWork()
         {
-            var clt = new NamedPipeClientStream("localhost", $"PipesOfPiece_{ Process.GetCurrentProcess().Id}", PipeDirection.InOut, PipeOptions.Asynchronous);
+            PipeStreamHelper.WaitForDebug();
+
+            var clt = new NamedPipeClientStream("localhost", $"PipesOfPiece_{ Process.GetCurrentProcess().Id}", PipeDirection.InOut, PipeOptions.None);
 
             clt.Connect();
-            var inBuff = new byte[256];
-            var read = clt.ReadAsync(inBuff, 0, inBuff.Length);
-            var msg = Encoding.UTF8.GetBytes("Hello!");
-            var write = clt.WriteAsync(msg, 0, msg.Length);
-            Task.WaitAll(read, write);
-            var cltMsg = Encoding.UTF8.GetString(inBuff, 0, read.Result);
+
+            var inBuff = new byte[64*1024+10];
+            int checkSum = 0;
+            for (int i = 0; i < inBuff.Length; i++)
+            {
+                inBuff[i] = (byte)(2 * i + 1);
+                checkSum += inBuff[i];
+            }
+            Console.WriteLine($"CheckSum={checkSum}");
+            PipeStreamHelper.WriteData(clt, inBuff);
+
+
+            var data=PipeStreamHelper.ReadData(clt);
+
+
+            // Task.WaitAll(read, write);
+            var cltMsg = Encoding.UTF8.GetString(data, 0, data.Length);
             Console.WriteLine("Client got message: {0}", cltMsg);
             return 7;
         }
