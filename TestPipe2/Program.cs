@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -17,6 +18,8 @@ namespace TestPipe2
     {
         private static readonly string ArgChild = "--child";
 
+        private static ConcurrentDictionary<int, bool> pids = new ConcurrentDictionary<int, bool>();
+
         static void LaunchChild()
         {
             Console.WriteLine("Process0");
@@ -34,7 +37,10 @@ namespace TestPipe2
                 Console.WriteLine("Process");
                 using (Process exeProcess = Process.Start(startInfo))
                 {
-                    var svr = new NamedPipeServerStream($"PipesOfPiece_{exeProcess.Id}", PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte);
+                    int pid = exeProcess.Id;
+                    pids.TryAdd(pid, true);
+
+                    var svr = new NamedPipeServerStream($"PipesOfPiece_{pid}", PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte);
                     svr.WaitForConnection();
 
                     var data=PipeStreamHelper.ReadData(svr);
@@ -44,7 +50,9 @@ namespace TestPipe2
 
                     Console.WriteLine($"Hash on server = {PipeStreamHelper.GetHash(data)}");
 
-                    while (!exeProcess.WaitForExit(1000)) ;
+                    while (!exeProcess.WaitForExit(1000));
+                    bool value;
+                    pids.TryRemove(pid, out value);
                     Console.WriteLine($"retCode={exeProcess.ExitCode}");
                 }
             }
@@ -86,6 +94,20 @@ namespace TestPipe2
             return -7;
         }
     
+        static void KillSubProcesses()
+        {
+            foreach (var pid in pids)
+            {
+                try
+                {
+                    Process.GetProcessById(pid.Key).Kill();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
+            }
+        }
 
         static int Main(string[] args)
         {
