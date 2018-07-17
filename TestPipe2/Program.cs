@@ -44,7 +44,7 @@ namespace TestPipe2
                     PipeStreamHelper.WriteData(svr, response);
                     Console.WriteLine("It's all over");
                     while (!exeProcess.WaitForExit(1000)) ;
-                    Console.WriteLine($"ret={exeProcess.ExitCode}");
+                    Console.WriteLine($"retCode={exeProcess.ExitCode}");
                 }
             }
             catch (Exception e)
@@ -64,7 +64,7 @@ namespace TestPipe2
 
             clt.Connect();
 
-            var inBuff = new byte[64*1024+10];
+            var inBuff = new byte[10*1024*1024+1755662];
             int checkSum = 0;
             for (int i = 0; i < inBuff.Length; i++)
             {
@@ -81,7 +81,7 @@ namespace TestPipe2
             // Task.WaitAll(read, write);
             var cltMsg = Encoding.UTF8.GetString(data, 0, data.Length);
             Console.WriteLine("Client got message: {0}", cltMsg);
-            return 7;
+            return -7;
         }
     
 
